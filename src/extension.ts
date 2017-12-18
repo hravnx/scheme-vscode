@@ -3,7 +3,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
-let g_terminals: vscode.Terminal[] = [];
+let g_terminal: vscode.Terminal = null;
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -17,25 +17,28 @@ export function activate(context: vscode.ExtensionContext) {
   // Now provide the implementation of the command with  registerCommand
   // The commandId parameter must match the command field in package.json
   let disposable = vscode.commands.registerCommand('extension.startREPL', () => {
-    const newTerminal = vscode.window.createTerminal(`Chez #${g_terminals.length + 1}`, "chez");
-    g_terminals.push(newTerminal);
-    newTerminal.show();
+    if (g_terminal === null) {
+      g_terminal = vscode.window.createTerminal("Chez REPL", "chez");
+    }
+    g_terminal.show(true);
   });
+  context.subscriptions.push(disposable);
 
-  vscode.window.onDidCloseTerminal(terminal => {
-    console.log(`${terminal.name} closed`);
-    const idx = g_terminals.findIndex(t => terminal === t);
-    if (idx !== -1) {
-      g_terminals.splice(idx, 1);
+  disposable = vscode.commands.registerCommand('extension.sendToREPL', () => {
+    if (g_terminal !== null) {
+      g_terminal.sendText("(+ 1 2)", true);
     }
   });
-
   context.subscriptions.push(disposable);
+
+  vscode.window.onDidCloseTerminal(terminal => {
+    if (terminal === g_terminal) {
+      console.log("Closing Chez REPL");
+      g_terminal = null;
+    }
+  });
 }
 
 // this method is called when your extension is deactivated
 export function deactivate() {
-  console.log("Number of terminals active", g_terminals.length);
-  g_terminals.forEach(t => t.dispose());
-  g_terminals = [];
 }
