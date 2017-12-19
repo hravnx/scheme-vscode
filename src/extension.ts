@@ -5,38 +5,47 @@ import * as vscode from 'vscode';
 
 let g_terminal: vscode.Terminal = null;
 
+
+function createTerminal() {
+  if (g_terminal === null) {
+    g_terminal = vscode.window.createTerminal("Chez REPL", "chez");
+  }
+  g_terminal.show(true);
+}
+
+function sendText() {
+  if (g_terminal === null) {
+    return;
+  }
+  const editor = vscode.window.activeTextEditor;
+  if (editor) {
+    const text = editor.document.getText(editor.selection);
+    if (text) {
+      g_terminal.sendText(text, true);
+    }
+  }
+}
+
+function onCloseTerminal(terminal: vscode.Terminal) {
+  if (terminal === g_terminal) {
+    console.log("Closing Chez REPL");
+    g_terminal = null;
+  }
+}
+
+const commandMap = {
+  startREPL: createTerminal,
+  sendToREPL: sendText
+};
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
-  // Use the console to output diagnostic information (console.log) and errors (console.error)
-  // This line of code will only be executed once when your extension is activated
-  console.log('Congratulations, your extension "scheme-vscode" is now active!');
-
-  // The command has been defined in the package.json file
-  // Now provide the implementation of the command with  registerCommand
-  // The commandId parameter must match the command field in package.json
-  let disposable = vscode.commands.registerCommand('extension.startREPL', () => {
-    if (g_terminal === null) {
-      g_terminal = vscode.window.createTerminal("Chez REPL", "chez");
-    }
-    g_terminal.show(true);
+  Object.keys(commandMap).forEach(name => {
+    context.subscriptions.push(vscode.commands.registerCommand('extension.'+name, commandMap[name]));
   });
-  context.subscriptions.push(disposable);
 
-  disposable = vscode.commands.registerCommand('extension.sendToREPL', () => {
-    if (g_terminal !== null) {
-      g_terminal.sendText("(+ 1 2)", true);
-    }
-  });
-  context.subscriptions.push(disposable);
-
-  vscode.window.onDidCloseTerminal(terminal => {
-    if (terminal === g_terminal) {
-      console.log("Closing Chez REPL");
-      g_terminal = null;
-    }
-  });
+  vscode.window.onDidCloseTerminal(onCloseTerminal);
 }
 
 // this method is called when your extension is deactivated
